@@ -133,8 +133,8 @@ int main()  // we're called directly by Crt0.S
 
     InitLEDsAndButtons();
 
-    // sometimes there is a debugger circuit on the board that needs to intialize and will
-    // pull the reset line after 6 seconds or so and abruptly abort the loaded applicaiton.
+    // sometimes there is a debugger circuit on the board that needs to initialize and will
+    // pull the reset line after 6 seconds or so and abruptly abort the loaded application.
     // this pause is put in for a Power On Reset only and waits for the debug circuit to come up
     // and apply the external reset which this call will ignore.
     WaitForFinalReset();
@@ -147,9 +147,25 @@ int main()  // we're called directly by Crt0.S
     // 1. The program button tells use to wait indefinitely (don't load from flash) for an upload
     fLoadProgramFromFlash &= !fLoadFromAVRDudeViaProgramButton;
 
-    // 2. The virtual program button tells us to wait indefinitly for an upload
+    // 2. The virtual program button tells us to wait indefinitely for an upload
     //      but only if this is not from a real reset of the processor and must come as a software reset.
-    fLoadProgramFromFlash &= !(fLoadFromAVRDudeViaVirtualProgramButton && !RCONbits.POR && !RCONbits.EXTR && RCONbits.SWR);
+    __RCONbits_t tRCON = RCONbits;
+    __LATCbits_t tLATC = LATCbits;
+    bool VPB = fLoadFromAVRDudeViaVirtualProgramButton;
+    
+    EnableBootLED();
+    if( tLATC.LATC12 == 1)
+        BootLED_On();
+    else
+        BootLED_Off();
+            
+    if(VPB)
+        BootLED_On();
+    else
+        BootLED_Off();
+
+    fLoadProgramFromFlash &= !(VPB && !tRCON.POR && !tRCON.EXTR && tRCON.SWR);
+    //fLoadProgramFromFlash &= !(!tRCON.POR && !tRCON.EXTR && tRCON.SWR);
 
     // 3. Otherwise we will either load the program immediately, or wait our timeout time to load
     // this will happen in the for loop below
@@ -171,7 +187,7 @@ int main()  // we're called directly by Crt0.S
     tLastBlink = tLoopStart;
 
     // at this point we know that we either are going to wait
-    // for something to be download, or are going to wait indefinitly for
+    // for something to be download, or are going to wait indefinitely for
     // for a download, in any case we need to enable the the interface for the download
     InitStk500v2Interface();
 
@@ -193,14 +209,14 @@ int main()  // we're called directly by Crt0.S
         }
 
         // See if we should jump to the application in flash
-        // If we just loaded an application via the Stk500v2Interface, we know there is an applicaiton
+        // If we just loaded an application via the Stk500v2Interface, we know there is an application
         // in flash and we can jump right to it now.
         if( fLoaded ||
 
             // If a program button is used, fLoadProgramFromFlash will be set false
             // as a program button will instruct to either immediately load from flash
             // and that will happen before this while loop, or wait forever for a program to load
-            // and we will jump to the applicaiton only once fLoaded is true
+            // and we will jump to the application only once fLoaded is true
             // This is also be false if there was never an application loaded in flash
             // Also when we are downloading and app, this is set false to block jumping to the application until fLoaded is true
             (fLoadProgramFromFlash &&
@@ -257,7 +273,7 @@ int main()  // we're called directly by Crt0.S
 // fixes with rich@testardi.com.
 //
 // KeithV (Digilent) 2/21/2012 Made code configurable by including BoardConfig.h
-//                              Removed all references to plib.h C-runtime libarary
+//                              Removed all references to plib.h C-runtime library
 
 // this function handles the stk500v2 message protocol state machine
 void avrbl_state_machine(byte b)
@@ -364,7 +380,7 @@ avrbl_message(byte *request, int size)
         case CMD_SIGN_ON:
 
             // this will block us from loading from flash if our auto-reset timeout occures while we are actually
-            // in the process of downloading a new applicaiton. We wil have to wait until fLoaded is true before
+            // in the process of downloading a new application. We will have to wait until fLoaded is true before
             // we will load the application.
             fLoadProgramFromFlash = false; 
 
@@ -808,15 +824,9 @@ static void __attribute__((nomips16)) flashOperation(uint32 nvmop, uint32 addr, 
     unsigned long   t0;
 //    unsigned int    status;
 
-    #if defined(_PCACHE)
+#if defined(_CHECON_PREFEN_MASK)
         unsigned long   K0;
-        #if defined(_CHECON_PREFEN_MASK)
-            unsigned long   PFEN = CHECON & _CHECON_PREFEN_MASK;
-        #elif defined(_PRECON_PREFEN_MASK)
-            unsigned long   PFEN = PRECON & _PRECON_PREFEN_MASK;
-        #else
-            #error Unable to get prefetch status for this CPU type
-        #endif
+        unsigned long   PFEN = CHECON & _CHECON_PREFEN_MASK;
     #endif
 
     // Convert Address to Physical Address
@@ -831,18 +841,11 @@ static void __attribute__((nomips16)) flashOperation(uint32 nvmop, uint32 addr, 
 
     // Suspend or Disable all Interrupts
 // no interrupts in the bootloader
-//    SuspendINT(status);  
+//    SuspendINT(status);
 
-    #if defined(_PCACHE)
+    #if defined(_CHECON_PREFEN_MASK)
         // disable predictive prefetching, see errata
-        #if defined(_CHECON_PREFEN_MASK)
-            CHECONCLR = _CHECON_PREFEN_MASK;
-        #elif defined(_PRECON_PREFEN_MASK)
-            PRECONCLR = _PRECON_PREFEN_MASK;
-        #else
-            #error Unable disable prefetch for this CPU type
-        #endif
-    
+        CHECONCLR = _CHECON_PREFEN_MASK;
 
         // turn off caching, see errata
         ReadK0(K0);
@@ -876,19 +879,13 @@ static void __attribute__((nomips16)) flashOperation(uint32 nvmop, uint32 addr, 
     // Disable Flash Write/Erase operations
     NVMCONCLR = NVMCON_WREN;
 
-    #if defined(_PCACHE)
+    #if defined(_CHECON_PREFEN_MASK)
         // restore predictive prefetching and caching, see errata
         WriteK0(K0);
-        #if defined(_CHECON_PREFEN_MASK)
-            CHECONSET = PFEN;
-        #elif defined(_PRECON_PREFEN_MASK)
-            PRECONSET = PFEN;
-        #else
-            #error Unable disable prefetch for this CPU type
-        #endif
+        CHECONSET = PFEN;
     #endif
 
-    // Restore Interrupts 
+    // Restore Interrupts
 //no interrupts in the bootloader
 //    RestoreINT(status);
 
@@ -899,7 +896,7 @@ static void __attribute__((nomips16)) flashOperation(uint32 nvmop, uint32 addr, 
 
 /***    void flashErasePage(uint32 addrPage)
 **
-**    Synopsis:   
+**    Synopsis:
 **      Erases the page starting at the page address.
 *
 **    Parameters:

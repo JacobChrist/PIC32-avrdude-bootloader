@@ -313,8 +313,10 @@
         #error LoadFlashWaitStates is not supported and unneeded for the MX1/2 or MZ parts
     #endif
 
-   // define nothing for the flash wait states
-    #define LoadFlashWaitStates()                           // not supported on MX1/2
+   // MX1 and 2 don't have wait states
+    #if !defined(LoadFlashWaitStates)
+        #define LoadFlashWaitStates()                           // not supported on MX1/2
+    #endif 
 
 #endif  // MX1 or MX2
 
@@ -589,7 +591,8 @@ static inline void __attribute__((always_inline)) InitLEDsAndButtons(void)
 
     #if(JTAG == 1)
         #ifdef __PIC32MZ__
-            CFGCONbits.JTAGEN = 1;
+//            CFGCONbits.JTAGEN = 1;
+            CFGCON = CFGCON | _CFGCON_TDOEN_MASK | _CFGCON_TROEN_MASK | _CFGCON_JTAGEN_MASK;
 //            i = 3;
         #else
             DDPCONbits.JTAGEN = 1;
@@ -727,7 +730,8 @@ static inline void __attribute__((always_inline)) UninitLEDsAndButtons(void)
     	//*	ok, the serial port is initialized, clear any data that may be there
     	while (USTAbits.URXDA)
     	{
-            (void)URXREG;
+    	    byte value = 0;
+            value = URXREG;
     	}
     }
 

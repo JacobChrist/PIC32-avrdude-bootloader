@@ -37,6 +37,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// N.B. the usb controller bdt data structures and the usb protocol
+// layers are defined to be little endian.
+//
+// This file originated from the cpustick.com skeleton project from
+// http://www.cpustick.com/downloads.htm and was originally written
+// by Rich Testardi; please preserve this reference and share bug
+// fixes with rich@testardi.com.
+
 // 3/1/2012 KeithV (Digilent) Updated to compiler inline and not conflict with
 //                           exisiting prototypes; thus the il (InLine) in the name.
 //                              Also designed to compile without plib.h, or stdlib.h included.

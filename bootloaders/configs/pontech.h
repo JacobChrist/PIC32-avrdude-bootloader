@@ -154,6 +154,14 @@
     #define FLASH_PAGE_SIZE             4096
     #define LoadFlashWaitStates()       (CHECON = 2)                // 0 for 0-30Mhz, 1 for 31-60Mhz, 2 for 61-80Mhz
 #elif defined(_BOARD_PONTECH_NOFIRE_) // PIC32MZ2048EFG100
+/*
+ * The purpose of the PONTECH NoFire boot loader is to replace the bootloader on a WiFire board so that when a 
+ * executeSoftReset(ENTER_BOOTLOADER_ON_BOOT); is executed in a sketch the when the board is reset the 
+ * bootloader will not boot to a valid sketch.  Also, when a POR is received the bootloader will not wait if a
+ * valid sketch is in memory.  The idea is that if there is a valid sketch we boot as fast as possible and if we
+ * reset to from a sketch we sit in the bootloader until a new sketch is received or power is cycled.  This will 
+ * make a WiFire behave more like a Fubarino SD/Mini bootloader via FTDI.
+ */
 #define _CONFIG_VALID_
 
 #if defined(PUT_CONFIG_BITS_HERE)
@@ -219,9 +227,11 @@
 
 #endif
 
-    #define CAPABILITIES    (blCapBootLED | blCapDownloadLED | blCapUARTInterface | blCapAutoResetListening | blCapVirtualProgramButton | CAPCOMMON)
+    //#define CAPABILITIES    (blCapBootLED | blCapDownloadLED | blCapUARTInterface | blCapAutoResetListening | blCapVirtualProgramButton | CAPCOMMON)
+    //#define CAPABILITIES    (blCapBootLED | blCapDownloadLED | blCapUARTInterface | blCapProgramButton | blCapVirtualProgramButton | CAPCOMMON)
+    #define CAPABILITIES    (blCapBootLED | blCapDownloadLED | blCapUARTInterface | blCapVirtualProgramButton | CAPCOMMON)
 
-    // BTN / LED sense
+// BTN / LED sense
     #define LedOn       High
     #define BntOn       High
 
@@ -237,8 +247,12 @@
     #define VPBntLat    C
     #define VPBntBit    12
 
+    // Program button
+    //#define PBntPort    C
+    ///#define PBntBit     12
+
     // Other capabilities
-    #define LISTEN_BEFORE_LOAD          2000                // no less than 2 seconds
+    //#define LISTEN_BEFORE_LOAD          30000               // no less than 2 seconds
     #define BOOTLOADER_UART             4                   // avrdude program UART
     #define BAUDRATE                    115200              // avrdude baudrate
     #define UARTMapRX()                 (U4RXR = 0b1011)    // RPF2 -> U4RX
