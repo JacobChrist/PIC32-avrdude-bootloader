@@ -164,8 +164,9 @@ int main()  // we're called directly by Crt0.S
     else
         BootLED_Off();
 
-    fLoadProgramFromFlash &= !(VPB && !tRCON.POR && !tRCON.EXTR && tRCON.SWR);
-    //fLoadProgramFromFlash &= !(!tRCON.POR && !tRCON.EXTR && tRCON.SWR);
+    //fLoadProgramFromFlash &= !(VPB && !tRCON.POR && !tRCON.EXTR && tRCON.SWR);
+    //fLoadProgramFromFlash &= !(!tRCON.POR && !tRCON.EXTR && tRCON.SWR);  // Only go to bootloader with a soft reset
+    fLoadProgramFromFlash &= tRCON.POR;  // Go to bootloader with a soft reset or hard reset but no with power on.
 
     // 3. Otherwise we will either load the program immediately, or wait our timeout time to load
     // this will happen in the for loop below
